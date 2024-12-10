@@ -2,7 +2,10 @@ package com.example.generatenumbapp
 
 import android.content.Context
 import android.os.Bundle
+import android.text.Editable
 import android.text.InputType
+import android.text.TextWatcher
+import android.util.Log
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
@@ -43,6 +46,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.draw.alpha
+import java.text.DecimalFormat
 import java.util.Random
 import kotlin.math.exp
 import kotlin.math.sqrt
@@ -68,19 +72,28 @@ object Ids {
 
 @Composable
 fun MainScreen(innerPadding: PaddingValues) {
+    var μ by remember { mutableStateOf<Double?>(null) }
+    var D by remember { mutableStateOf<Double?>(null) }
+    var x by remember { mutableStateOf<String?>(null) }
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(innerPadding),
     ) {
-//        val random = Random()
-//        val z = random.nextGaussian()
         Formula()
-        CustomEditText("Введи µ", Ids.mean_val)
-        CustomEditText("Введи σ²", Ids.variance_value)
-        CustomButton("Сгенерировать x", Ids.get_random_num)
-        CustomTextView( "Результат", Ids.random_number_result)
+        CustomEditText("Введи µ", Ids.mean_val) { μ = it.toDoubleOrNull() }
+        CustomEditText("Введи σ²", Ids.variance_value) { D = it.toDoubleOrNull() }
+        CustomButton("Сгенерировать x", Ids.get_random_num) {
+            if (μ != null && D != null)
+                x = CountX(μ!!, D!!)
+            else x = null
+        }
+        CustomTextView( "Результат", Ids.random_number_result, x)
     }
+}
+
+fun CountX(μ: Double, D: Double): String {
+    return exp(μ + sqrt(D) * Random().nextGaussian()).toString()
 }
 
 @Composable
@@ -137,8 +150,7 @@ fun Formula() {
 }
 
 @Composable
-fun CustomEditText(hint: String, id: Int) {
-    val context = LocalContext.current
+fun CustomEditText(hint: String, id: Int, onValChange: (String) -> Unit) {
     AndroidView(
         factory = { context: Context ->
             EditText(context).apply {
@@ -149,13 +161,20 @@ fun CustomEditText(hint: String, id: Int) {
             }
         },
         modifier = Modifier.fillMaxWidth(),
-        update = { editText ->
+        update = { editText: EditText ->
+            editText.addTextChangedListener(object : TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                    onValChange(s.toString())
+                }
+                override fun afterTextChanged(s: Editable?) {}
+            })
         }
     )
 }
 
 @Composable
-fun CustomTextView(hint: String, id: Int) {
+fun CustomTextView(hint: String, id: Int, text: String? = null) {
     AndroidView(
         factory = { context: Context ->
             TextView(context).apply {
@@ -163,27 +182,28 @@ fun CustomTextView(hint: String, id: Int) {
                 this.id = id
                 this.setTag(id)
                 this.textSize = 20f
+                this.text = text
             }
         },
         modifier = Modifier.fillMaxWidth().padding(horizontal = 5.dp),
         update = { editText ->
+            editText.text = text
         }
     )
 }
 
 @Composable
-fun CustomButton(hint: String, id: Int) {
+fun CustomButton(hint: String, id: Int, onClick: () -> Unit) {
     AndroidView(
         factory = { context: Context ->
             Button(context).apply {
-                this.hint = hint
+                this.text = hint
                 this.id = id
                 this.setTag(id)
                 this.textSize = 20f
+                setOnClickListener { onClick() }
             }
         },
-        modifier = Modifier.fillMaxWidth(),
-        update = { editText ->
-        }
+        modifier = Modifier.fillMaxWidth()
     )
 }
