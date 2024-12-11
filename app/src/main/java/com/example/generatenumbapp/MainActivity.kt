@@ -45,23 +45,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.foundation.layout.*
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.draw.alpha
 import java.text.DecimalFormat
 import java.util.Random
 import kotlin.math.exp
 import kotlin.math.sqrt
-
-class MainActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        setContent {
-            Scaffold { innerPadding ->
-                MainScreen(innerPadding)
-            }
-        }
-    }
-}
 
 object Ids {
     const val mean_val = 1
@@ -70,11 +59,59 @@ object Ids {
     const val random_number_result = 4
 }
 
+class MainActivity : ComponentActivity() {
+
+    object Params {
+        var μ: Double? = null
+            private set
+        var D: Double? = null
+            private set
+        var x: String? = null
+            private set
+
+        fun save(μ: Double?, D: Double?, x: String?) {
+            this.μ = μ
+            this.D = D
+            this.x = x
+        }
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+
+        savedInstanceState?.let {
+            Params.save(
+                it.getDouble("μ"),
+                it.getDouble("D"),
+                it.getString("x")
+            )
+        }
+        setContent {
+            Scaffold { innerPadding ->
+                MainScreen(innerPadding, Params)
+            }
+        }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        if (Params.μ != null) outState.putDouble("μ", Params.μ ?: 0.0)
+        if (Params.D != null) outState.putDouble("D", Params.D ?: 0.0)
+        if (Params.x != null) outState.putString("x", Params.x ?: "")
+    }
+}
+
 @Composable
-fun MainScreen(innerPadding: PaddingValues) {
-    var μ by remember { mutableStateOf<Double?>(null) }
-    var D by remember { mutableStateOf<Double?>(null) }
-    var x by remember { mutableStateOf<String?>(null) }
+fun MainScreen(innerPadding: PaddingValues, params: MainActivity.Params) {
+    var μ by remember { mutableStateOf(params.μ) }
+    var D by remember { mutableStateOf(params.D) }
+    var x by remember { mutableStateOf(params.x) }
+
+    LaunchedEffect(μ, D, x) {
+        params.save(μ, D, x)
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -86,9 +123,10 @@ fun MainScreen(innerPadding: PaddingValues) {
         CustomButton("Сгенерировать x", Ids.get_random_num) {
             if (μ != null && D != null)
                 x = CountX(μ!!, D!!)
-            else x = null
+            else
+                x = null
         }
-        CustomTextView( "Результат", Ids.random_number_result, x)
+        CustomTextView("Результат", Ids.random_number_result, x)
     }
 }
 
